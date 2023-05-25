@@ -1,0 +1,93 @@
+import speech_recognition as sr
+import pyttsx3
+import webbrowser
+import requests
+import json
+
+# Initialize speech recognition
+r = sr.Recognizer()
+
+# Инициализация движка
+engine = pyttsx3.init()
+
+# Укажите путь к модели распознавания речи Vosk
+vosk_model_path = "path/to/vosk/model"
+
+# Определение ключевых слов для команд
+COMMANDS = {
+    "save": lambda: save_data(),
+    "meaning": lambda word: get_word_meaning(word),
+    "link": lambda link: open_link(link),
+    "example": lambda word: get_word_example(word),
+}
+
+# Функция для сохранения данных
+def save_data():
+    # Реализация сохранения данных
+    pass
+
+# Функция для получения значения слова
+def get_word_meaning(word):
+    # Запрос к API для получения значения слова
+    response = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}")
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        # Извлечение и озвучивание значения слова
+        meaning = data[0]['meanings'][0]['definitions'][0]['definition']
+        speak(meaning)
+    else:
+        speak("Sorry, I couldn't find the meaning of the word.")
+
+# Функция для открытия ссылки в браузере
+def open_link(link):
+    # Открытие ссылки в веб-браузере
+    webbrowser.open(link)
+
+# Функция для получения примера использования слова
+def get_word_example(word):
+    # Запрос к API для получения примера использования слова
+    response = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}")
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        # Извлечение и озвучивание примера предложения
+        example = data[0]['meanings'][0]['definitions'][0]['example']
+        speak(example)
+    else:
+        speak("Sorry, I couldn't find the meaning of the word.")
+
+# Функция для озвучивания текста
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+
+# Основная функция голосового помощника
+def voice_assistant():
+    with sr.Microphone() as source:
+        print("Listening...")
+        audio = r.listen(source)
+
+    try:
+        print("Recognizing...")
+        # Использование модели Vosk для распознавания речи
+        recognized_text = r.recognize_sphinx(audio, language='en-US', model_path=vosk_model_path)
+        print("Recognized Text:", recognized_text)
+
+        # Обработка распознанного текста для команды и параметров
+        words = recognized_text.lower().split()
+        command = words[0]
+        parameters = words[1:]
+
+        # Выполнение соответствующей команды
+        if command in COMMANDS:
+            COMMANDS[command](*parameters)
+        else:
+           speak("Sorry, I didn't understand the command.")
+
+    except sr.UnknownValueError:
+        speak("Sorry, I couldn't recognize your voice.")
+    except sr.RequestError:
+        speak("Sorry, I couldn't find the meaning of the word.")
+
+# Run the voice assistant
+while True:
+    voice_assistant()
